@@ -1,0 +1,583 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <meta
+    name="theme-color"
+    content="#16120f"
+  />
+
+  <meta
+    name="description"
+    content="Mistri — Har site ka apna soundtrack."
+  />
+
+  <title>
+    Mistri — Har site ka apna soundtrack.
+  </title>
+
+</head>
+
+
+<body>
+
+  <main
+    id="app"
+    class="site"
+  >
+
+
+    <!-- ==================================================
+         BACKGROUND
+    ================================================== -->
+
+    <div
+      class="site-bg"
+      aria-hidden="true"
+    ></div>
+
+    <div
+      class="site-vignette"
+      aria-hidden="true"
+    ></div>
+
+    <div
+      class="site-grain"
+      aria-hidden="true"
+    ></div>
+
+
+
+    <!-- ==================================================
+         TOP BAR
+    ================================================== -->
+
+    <header class="topbar">
+
+
+      <!-- CURRENT TIME -->
+
+      <div
+        class="time"
+        id="time"
+      >
+        5:37 pm
+      </div>
+
+
+
+      <!-- LIVE LISTENERS -->
+
+      <div class="site-status">
+
+        <span
+          class="status-dot"
+          aria-hidden="true"
+        ></span>
+
+        <span id="listenerCount">
+          0
+        </span>
+
+        <span id="statusText">
+          on the site
+        </span>
+
+      </div>
+
+
+
+      <!-- ==================================================
+           YOUTUBE PLAYLIST
+      ================================================== -->
+
+      <a
+  class="youtube-playlist"
+  id="youtubePlaylist"
+  href="https://music.youtube.com/playlist?list=PLKpBGZwew_oE&si=wAlDGbF3_NZXJyJy"
+  target="_blank"
+  rel="noopener noreferrer"
+  aria-label="Open YouTube Music playlist"
+  title="Open YouTube Music"
+>
+
+  <span class="youtube-circle" aria-hidden="true">
+    <span class="youtube-play">▶</span>
+  </span>
+
+  <span class="youtube-label">
+    YT Music
+  </span>
+
+  <span class="youtube-arrow" aria-hidden="true">
+    ↗
+  </span>
+
+</a>
+
+
+    </header>
+
+
+
+    <!-- ==================================================
+         HERO
+    ================================================== -->
+
+    <section class="hero-copy">
+
+
+      <p
+        class="eyebrow"
+        id="themeNumber"
+      >
+        01 / 03
+      </p>
+
+
+      <h1 id="brand">
+        मिस्त्री
+      </h1>
+
+
+      <p class="tagline">
+        हर साइट का अपना साउंडट्रैक।
+      </p>
+
+
+      <p
+        class="theme-line"
+        id="themeLine"
+      >
+        मिस्त्री की सुबह · 7:15 AM - वैभव द्वारा बनाया गया
+      </p>
+
+
+    </section>
+
+
+
+    <!-- ==================================================
+         THEME NAVIGATION
+    ================================================== -->
+
+    <button
+      class="theme-hint left-hint"
+      aria-label="Previous site"
+      type="button"
+    >
+      ←
+    </button>
+
+
+    <button
+      class="theme-hint right-hint"
+      aria-label="Next site"
+      type="button"
+    >
+      →
+    </button>
+
+
+
+    <!-- ==================================================
+         SITE SOUNDS
+    ================================================== -->
+
+    <section
+      class="sound-triggers"
+      id="soundTriggers"
+      aria-label="Site sounds"
+    ></section>
+
+
+
+    <!-- ==================================================
+         MUSIC PLAYER
+    ================================================== -->
+
+    <section
+      class="player-wrap"
+      aria-label="Music player"
+    >
+
+
+      <div class="player">
+
+
+        <!-- ==================================================
+             COVER
+        ================================================== -->
+
+        <div class="cover">
+
+          <div
+            class="cover-shine"
+            aria-hidden="true"
+          ></div>
+
+          <span id="coverInitial">
+            M
+          </span>
+
+        </div>
+
+
+
+        <!-- ==================================================
+             TRACK INFORMATION
+        ================================================== -->
+
+        <div class="track-info">
+
+
+          <div
+            class="track-source"
+            id="trackSource"
+          >
+            मिस्त्री की सुबह / 01
+          </div>
+
+
+          <div
+            class="track-title"
+            id="trackTitle"
+          >
+            Pehli Eent
+          </div>
+
+
+          <div
+            class="track-artist"
+            id="trackArtist"
+          >
+            Mistri Radio
+          </div>
+
+
+
+          <!-- ==================================================
+               PROGRESS
+          ================================================== -->
+
+          <div class="progress-row">
+
+
+            <span id="currentTime">
+              0:00
+            </span>
+
+
+            <input
+              id="progress"
+              type="range"
+              min="0"
+              max="100"
+              value="0"
+              aria-label="Song progress"
+            />
+
+
+            <span id="duration">
+              —:——
+            </span>
+
+
+          </div>
+
+
+        </div>
+
+
+
+        <!-- ==================================================
+             PLAYER CONTROLS
+        ================================================== -->
+
+        <div class="player-controls">
+
+
+          <!-- SHUFFLE -->
+
+          <button
+            class="control-btn utility-control shuffle-control"
+            id="shuffle"
+            aria-label="Shuffle"
+            aria-pressed="false"
+            title="Shuffle"
+            type="button"
+          >
+
+            <span class="control-icon">
+              ↝
+            </span>
+
+          </button>
+
+
+
+          <!-- PREVIOUS -->
+
+          <button
+            class="control-btn"
+            id="previous"
+            aria-label="Previous track"
+            title="Previous track"
+            type="button"
+          >
+            ◀
+          </button>
+
+
+
+          <!-- PLAY / PAUSE -->
+
+          <button
+            class="main-play"
+            id="playPause"
+            aria-label="Play"
+            title="Play / Pause"
+            type="button"
+          >
+            ▶
+          </button>
+
+
+
+          <!-- NEXT -->
+
+          <button
+            class="control-btn"
+            id="next"
+            aria-label="Next track"
+            title="Next track"
+            type="button"
+          >
+            ▶
+          </button>
+
+
+
+          <!-- QUEUE -->
+
+          <button
+            class="control-btn utility-control queue-control"
+            id="queue"
+            aria-label="View queue"
+            title="View queue"
+            type="button"
+          >
+
+            <span class="control-icon">
+              ≡
+            </span>
+
+          </button>
+
+
+        </div>
+
+
+
+        <!-- ==================================================
+             MOBILE CONTROLS
+        ================================================== -->
+
+        <div class="player-mobile-row">
+
+
+          <button
+            class="small-control"
+            id="back5"
+            type="button"
+            aria-label="Skip backward 5 seconds"
+          >
+            −5
+          </button>
+
+
+          <button
+            class="small-control"
+            id="forward5"
+            type="button"
+            aria-label="Skip forward 5 seconds"
+          >
+            +5
+          </button>
+
+
+          <button
+            class="small-control"
+            id="volume"
+            type="button"
+            aria-label="Mute"
+          >
+            🔊
+          </button>
+
+
+        </div>
+
+
+      </div>
+
+
+
+      <!-- PLAYER NOTE -->
+
+      <p
+        class="player-note"
+        id="playerNote"
+      >
+        YouTube
+      </p>
+
+
+    </section>
+
+
+
+    <!-- ==================================================
+         QUEUE OVERLAY
+    ================================================== -->
+
+    <div
+      class="queue-overlay"
+      id="queueOverlay"
+      aria-hidden="true"
+    >
+
+
+      <div
+        class="queue-panel"
+        id="queuePanel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="queueHeading"
+      >
+
+
+        <!-- ==================================================
+             QUEUE HEADER
+        ================================================== -->
+
+        <div class="queue-header">
+
+
+          <div>
+
+
+            <p class="queue-eyebrow">
+              MISTRI RADIO
+            </p>
+
+
+            <h2 id="queueHeading">
+              Queue
+            </h2>
+
+
+            <p
+              class="queue-theme"
+              id="queueTheme"
+            >
+              मिस्त्री की सुबह
+            </p>
+
+
+          </div>
+
+
+
+          <!-- CLOSE -->
+
+          <button
+            class="queue-close"
+            id="queueClose"
+            aria-label="Close queue"
+            type="button"
+          >
+            ×
+          </button>
+
+
+        </div>
+
+
+
+        <!-- ==================================================
+             QUEUE TRACKS
+        ================================================== -->
+
+        <div
+          class="queue-list"
+          id="queueList"
+        ></div>
+
+
+
+        <!-- ==================================================
+             QUEUE FOOTER
+        ================================================== -->
+
+        <div class="queue-footer">
+
+
+          <span id="queueCount">
+            0 tracks
+          </span>
+
+
+          <span>
+            ESC TO CLOSE
+          </span>
+
+
+        </div>
+
+
+      </div>
+
+
+    </div>
+
+
+
+    <!-- ==================================================
+         SWIPE HINT
+    ================================================== -->
+
+    <div class="swipe-label">
+      SWIPE / DRAG TO CHANGE SITE
+    </div>
+
+    <div class="creator-credit">
+        Made by Vaibhav with <span>❤️</span>
+    </div>
+
+
+  </main>
+
+
+
+  <!-- ==================================================
+       APPLICATION
+  ================================================== -->
+
+  <script
+    type="module"
+    src="/src/main.js"
+  ></script>
+
+
+</body>
+
+</html>

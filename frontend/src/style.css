@@ -308,6 +308,27 @@ button {
 }
 
 /* ==================================================
+   HERO SWIPE INSTRUCTION
+================================================== */
+
+.swipe-explore {
+  margin: 18px 0 0;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+
+  color: rgba(255, 255, 255, 0.96);
+
+  text-shadow:
+    0 3px 16px rgba(0, 0, 0, 0.45);
+
+  white-space: nowrap;
+}
+
+/* ==================================================
    THEME NAVIGATION
 ================================================== */
 
@@ -1769,6 +1790,14 @@ button {
 
     letter-spacing: -0.09em;
   }
+
+  .swipe-explore {
+  margin-top: 14px;
+
+  font-size: 10px;
+
+  letter-spacing: 0.18em;
+}
 
   .eyebrow {
     margin-bottom: 14px;

@@ -5,155 +5,279 @@ const API_BASE_URL =
    YOUTUBE HELPERS
 ========================================================= */
 
+/*
+ * Get the actual YouTube video ID from a track.
+ *
+ * Supported formats:
+ *
+ * {
+ *   id: "VIDEO_ID"
+ * }
+ *
+ * {
+ *   videoId: "VIDEO_ID"
+ * }
+ *
+ * {
+ *   id: {
+ *     videoId: "VIDEO_ID"
+ *   }
+ * }
+ *
+ * {
+ *   resourceId: {
+ *     videoId: "VIDEO_ID"
+ *   }
+ * }
+ */
 function getVideoId(track) {
   if (!track) {
     return null;
   }
 
-  /*
-   * Most likely format:
-   * {
-   *   id: "VIDEO_ID",
-   *   title: "...",
-   *   artist: "..."
-   * }
-   */
-
-  if (typeof track.id === "string") {
-    return track.id;
-  }
-
-  if (typeof track.videoId === "string") {
-    return track.videoId;
+  if (
+    typeof track.videoId === "string" &&
+    track.videoId.trim()
+  ) {
+    return track.videoId.trim();
   }
 
   if (
-    typeof track.id?.videoId === "string"
+    typeof track.id === "string" &&
+    track.id.trim()
   ) {
-    return track.id.videoId;
+    return track.id.trim();
+  }
+
+  if (
+    typeof track.id?.videoId === "string" &&
+    track.id.videoId.trim()
+  ) {
+    return track.id.videoId.trim();
+  }
+
+  if (
+    typeof track.resourceId?.videoId ===
+      "string" &&
+    track.resourceId.videoId.trim()
+  ) {
+    return track.resourceId.videoId.trim();
+  }
+
+  if (
+    typeof track.contentDetails?.videoId ===
+      "string" &&
+    track.contentDetails.videoId.trim()
+  ) {
+    return track.contentDetails.videoId.trim();
   }
 
   return null;
 }
 
-function getThumbnail(track) {
+
+/* =========================================================
+   THUMBNAIL HELPERS
+========================================================= */
+
+/*
+ * Generate YouTube thumbnail URLs directly
+ * from the video ID.
+ *
+ * maxresdefault:
+ *   Highest quality when available.
+ *
+ * hqdefault:
+ *   Reliable fallback.
+ */
+function getYouTubeThumbnailUrls(
+  videoId
+) {
+  if (!videoId) {
+    return {
+      primary: null,
+      fallback: null
+    };
+  }
+
+  const encodedVideoId =
+    encodeURIComponent(videoId);
+
+  return {
+    primary:
+      `https://i.ytimg.com/vi/${encodedVideoId}/maxresdefault.jpg`,
+
+    fallback:
+      `https://i.ytimg.com/vi/${encodedVideoId}/hqdefault.jpg`
+  };
+}
+
+
+/*
+ * Get an existing thumbnail from the backend/API.
+ */
+function getExistingThumbnail(
+  track
+) {
   if (!track) {
     return null;
   }
 
   /*
-   * Use an existing thumbnail if the backend
-   * already provides one.
+   * Direct thumbnail properties.
    */
+  const directThumbnail =
+    [
+      track.thumbnail,
+      track.thumbnailUrl,
+      track.image,
+      track.artwork
+    ].find(
+      (value) =>
+        typeof value === "string" &&
+        value.trim()
+    );
 
-  if (
-    typeof track.thumbnail === "string" &&
-    track.thumbnail
-  ) {
-    return track.thumbnail;
-  }
-
-  if (
-    typeof track.thumbnailUrl === "string" &&
-    track.thumbnailUrl
-  ) {
-    return track.thumbnailUrl;
-  }
-
-  if (
-    typeof track.image === "string" &&
-    track.image
-  ) {
-    return track.image;
-  }
-
-  if (
-    typeof track.artwork === "string" &&
-    track.artwork
-  ) {
-    return track.artwork;
+  if (directThumbnail) {
+    return directThumbnail;
   }
 
   /*
-   * Handle YouTube API thumbnail objects.
+   * YouTube thumbnail objects.
    */
+  const youtubeThumbnail =
+    [
+      track.thumbnails?.maxres?.url,
+      track.thumbnails?.high?.url,
+      track.thumbnails?.medium?.url,
+      track.thumbnails?.default?.url
+    ].find(
+      (value) =>
+        typeof value === "string" &&
+        value.trim()
+    );
 
-  if (
-    track.thumbnails?.high?.url
-  ) {
-    return track.thumbnails.high.url;
-  }
-
-  if (
-    track.thumbnails?.medium?.url
-  ) {
-    return track.thumbnails.medium.url;
-  }
-
-  if (
-    track.thumbnails?.default?.url
-  ) {
-    return track.thumbnails.default.url;
-  }
-
-  /*
-   * If the backend didn't send a thumbnail,
-   * generate the standard YouTube thumbnail
-   * directly from the video ID.
-   */
-
-  const videoId =
-    getVideoId(track);
-
-  if (videoId) {
-    return `https://i.ytimg.com/vi/${encodeURIComponent(
-      videoId
-    )}/hqdefault.jpg`;
+  if (youtubeThumbnail) {
+    return youtubeThumbnail;
   }
 
   return null;
 }
 
+
+/*
+ * Get complete artwork information.
+ *
+ * Returns:
+ *
+ * {
+ *   primary: "...",
+ *   fallback: "..."
+ * }
+ */
+function getThumbnailInfo(
+  track
+) {
+  /*
+   * First use artwork supplied by
+   * the backend.
+   */
+  const existing =
+    getExistingThumbnail(track);
+
+  if (existing) {
+    return {
+      primary: existing,
+      fallback: null
+    };
+  }
+
+  /*
+   * Otherwise generate artwork directly
+   * from the YouTube video ID.
+   */
+  const videoId =
+    getVideoId(track);
+
+  return getYouTubeThumbnailUrls(
+    videoId
+  );
+}
+
+
+/*
+ * Public/simple thumbnail getter.
+ */
+function getThumbnail(track) {
+  const thumbnailInfo =
+    getThumbnailInfo(track);
+
+  return (
+    thumbnailInfo.primary ||
+    thumbnailInfo.fallback ||
+    null
+  );
+}
+
+
+/* =========================================================
+   NORMALIZE TRACK
+========================================================= */
+
 function normalizeTrack(track) {
   const videoId =
     getVideoId(track);
+
+  const thumbnailInfo =
+    getThumbnailInfo(track);
 
   return {
     ...track,
 
     /*
-     * Keep the original YouTube video ID
-     * available to the player.
+     * Keep the actual YouTube video ID.
      */
     id:
       videoId ||
-      track.id,
+      track?.id ||
+      null,
+
+    /*
+     * Also expose it explicitly.
+     */
+    videoId,
 
     /*
      * Normalize title.
      */
     title:
-      track.title ||
-      track.name ||
+      track?.title ||
+      track?.name ||
       "Unknown Track",
 
     /*
      * Normalize artist.
      */
     artist:
-      track.artist ||
-      track.channelTitle ||
-      track.author ||
+      track?.artist ||
+      track?.channelTitle ||
+      track?.author ||
       "YouTube",
 
     /*
-     * Always expose the artwork using
-     * the property expected by main.js.
+     * Primary artwork.
      */
     thumbnail:
-      getThumbnail(track)
+      thumbnailInfo.primary,
+
+    /*
+     * Backup artwork.
+     */
+    thumbnailFallback:
+      thumbnailInfo.fallback
   };
 }
+
 
 /* =========================================================
    GET PLAYLIST TRACKS
@@ -189,11 +313,19 @@ export async function getPlaylistTracks(
       await fetch(
         `${API_BASE_URL}/api/youtube/playlist/${encodeURIComponent(
           playlistId
-        )}?${params}`
+        )}?${params.toString()}`
       );
 
-    const data =
-      await response.json();
+    let data = null;
+
+    try {
+      data =
+        await response.json();
+    } catch (error) {
+      throw new Error(
+        "Invalid response received from Mistri YouTube API."
+      );
+    }
 
     if (!response.ok) {
       throw new Error(
@@ -204,13 +336,16 @@ export async function getPlaylistTracks(
 
     if (
       Array.isArray(
-        data.tracks
+        data?.tracks
       )
     ) {
       const normalizedTracks =
-        data.tracks.map(
-          normalizeTrack
-        );
+        data.tracks
+          .map(normalizeTrack)
+          .filter(
+            (track) =>
+              Boolean(track.id)
+          );
 
       tracks.push(
         ...normalizedTracks
@@ -218,12 +353,17 @@ export async function getPlaylistTracks(
     }
 
     pageToken =
-      data.nextPageToken ||
+      data?.nextPageToken ||
       null;
+
   } while (pageToken);
 
   console.log(
-    `🎨 Loaded ${tracks.length} tracks with artwork`
+    `🎵 Loaded ${tracks.length} tracks`
+  );
+
+  console.log(
+    "🎨 Track artwork normalized"
   );
 
   return tracks;

@@ -731,10 +731,6 @@ function startProgressTimer() {
 function handleYouTubeState(
   playerState
 ) {
-  /*
-   * IMPORTANT:
-   * This must stay INSIDE the function.
-   */
   const YTState =
     window.YT?.PlayerState;
 
@@ -747,10 +743,6 @@ function handleYouTubeState(
   }
 
   switch (playerState) {
-    /* -----------------------------------------------------
-       PLAYING
-    ----------------------------------------------------- */
-
     case YTState.PLAYING:
       state.isPlaying = true;
 
@@ -777,10 +769,6 @@ function handleYouTubeState(
 
       break;
 
-    /* -----------------------------------------------------
-       PAUSED
-    ----------------------------------------------------- */
-
     case YTState.PAUSED:
       state.isPlaying = false;
 
@@ -795,10 +783,6 @@ function handleYouTubeState(
       );
 
       break;
-
-    /* -----------------------------------------------------
-       ENDED
-    ----------------------------------------------------- */
 
     case YTState.ENDED:
       state.isPlaying = false;
@@ -821,25 +805,13 @@ function handleYouTubeState(
 
       break;
 
-    /* -----------------------------------------------------
-       BUFFERING
-    ----------------------------------------------------- */
-
     case YTState.BUFFERING:
-      /*
-       * Do NOT change isPlaying here.
-       * The previous playback state remains valid.
-       */
       if (elements.playerNote) {
         elements.playerNote.textContent =
           "Buffering...";
       }
 
       break;
-
-    /* -----------------------------------------------------
-       CUED
-    ----------------------------------------------------- */
 
     case YTState.CUED:
       state.isPlaying = false;
@@ -930,12 +902,6 @@ async function loadTrack(
       return;
     }
 
-    /*
-     * Load the YouTube video.
-     *
-     * If autoPlay is true, the YouTube
-     * service will start playback.
-     */
     await loadYouTubeVideo(
       track.id,
       autoPlay
@@ -952,13 +918,6 @@ async function loadTrack(
       getEffectiveYouTubeVolume()
     );
 
-    /*
-     * If autoplay was requested, don't
-     * manually set state here.
-     *
-     * YouTube's PLAYING callback is the
-     * source of truth.
-     */
   } catch (error) {
     console.error(
       "YouTube player initialization failed:",
@@ -982,49 +941,127 @@ async function loadTrack(
    COVER ART
 ========================================================= */
 
-function getTrackThumbnail(
-  track
-) {
+/*
+ * Get the actual YouTube video ID.
+ */
+function getTrackVideoId(track) {
+  if (!track) {
+    return null;
+  }
+
   return (
-    track?.thumbnail ||
-    track?.thumbnailUrl ||
-    track?.image ||
-    track?.artwork ||
-    track?.thumbnails?.high?.url ||
-    track?.thumbnails?.medium?.url ||
-    track?.thumbnails?.default?.url ||
+    track.videoId ||
+    track.id ||
+    track.resourceId?.videoId ||
+    track.contentDetails?.videoId ||
     null
   );
 }
 
+
+/*
+ * Get cover artwork.
+ *
+ * The normalized youtube.js file should
+ * already provide thumbnail + thumbnailFallback.
+ *
+ * We still generate the YouTube URLs here
+ * as an additional safety fallback.
+ */
+function getTrackArtwork(track) {
+  if (!track) {
+    return {
+      primary: null,
+      fallback: null
+    };
+  }
+
+  /*
+   * Use normalized thumbnail first.
+   */
+  const primary =
+    track.thumbnail ||
+    track.thumbnailUrl ||
+    track.image ||
+    track.artwork ||
+    track.thumbnails?.maxres?.url ||
+    track.thumbnails?.high?.url ||
+    track.thumbnails?.medium?.url ||
+    track.thumbnails?.default?.url ||
+    null;
+
+  /*
+   * Use normalized fallback if available.
+   */
+  const fallback =
+    track.thumbnailFallback ||
+    null;
+
+  /*
+   * If we still don't have artwork,
+   * generate it from the video ID.
+   */
+  const videoId =
+    getTrackVideoId(track);
+
+  if (!primary && videoId) {
+    const encodedVideoId =
+      encodeURIComponent(videoId);
+
+    return {
+      primary:
+        `https://i.ytimg.com/vi/${encodedVideoId}/maxresdefault.jpg`,
+
+      fallback:
+        `https://i.ytimg.com/vi/${encodedVideoId}/hqdefault.jpg`
+    };
+  }
+
+  return {
+    primary,
+    fallback
+  };
+}
+
+
+/*
+ * Render the circular disc artwork.
+ */
 function renderCoverArt(
   track,
   theme
 ) {
-  if (!elements.coverInitial) {
+  const container =
+    elements.coverInitial;
+
+  if (!container) {
     return;
   }
 
-  const thumbnail =
-    getTrackThumbnail(track);
+  /*
+   * Clear previous artwork.
+   */
+  container.innerHTML = "";
 
-  if (!thumbnail) {
-    elements.coverInitial.innerHTML =
-      escapeHtml(
-        theme.name.charAt(0)
-      );
+  const artwork =
+    getTrackArtwork(track);
+
+  /*
+   * No artwork available.
+   */
+  if (!artwork.primary) {
+    container.textContent =
+      theme?.name?.charAt(0) ||
+      "M";
 
     return;
   }
 
-  elements.coverInitial.innerHTML =
-    "";
-
+  /*
+   * Create image.
+   */
   const image =
     document.createElement("img");
-
-  image.src =
-    thumbnail;
 
   image.alt =
     track?.title ||
@@ -1036,6 +1073,11 @@ function renderCoverArt(
   image.decoding =
     "async";
 
+  /*
+   * Prevent browser dragging the artwork.
+   */
+  image.draggable = false;
+
   Object.assign(
     image.style,
     {
@@ -1043,23 +1085,64 @@ function renderCoverArt(
       height: "100%",
       objectFit: "cover",
       borderRadius: "50%",
-      display: "block"
+      display: "block",
+      userSelect: "none",
+      WebkitUserDrag: "none"
     }
   );
 
+  /*
+   * Keep track of fallback state.
+   */
+  let usingFallback = false;
+
   image.onerror = () => {
+    /*
+     * First failure:
+     * try fallback artwork.
+     */
+    if (
+      artwork.fallback &&
+      !usingFallback
+    ) {
+      usingFallback = true;
+
+      console.warn(
+        "Max resolution artwork unavailable. Loading fallback artwork."
+      );
+
+      image.src =
+        artwork.fallback;
+
+      return;
+    }
+
+    /*
+     * Everything failed.
+     */
     console.warn(
-      "Unable to load album artwork:",
-      thumbnail
+      "Unable to load artwork for track:",
+      track
     );
 
     image.remove();
 
-    elements.coverInitial.textContent =
-      theme.name.charAt(0);
+    container.textContent =
+      theme?.name?.charAt(0) ||
+      "M";
   };
 
-  elements.coverInitial.appendChild(
+  /*
+   * Set source only after onerror
+   * has been registered.
+   */
+  image.src =
+    artwork.primary;
+
+  /*
+   * Append to disc.
+   */
+  container.appendChild(
     image
   );
 }
@@ -1188,6 +1271,10 @@ function renderTheme() {
       "YouTube";
   }
 
+  /*
+   * IMPORTANT:
+   * Render artwork from normalized track.
+   */
   renderCoverArt(
     track,
     theme
@@ -1296,7 +1383,6 @@ function changeTheme(
     });
 
   timeline
-
     .to(
       ".site-bg",
       {
@@ -1308,7 +1394,6 @@ function changeTheme(
         ease: "power2.in"
       }
     )
-
     .set(
       ".site-bg",
       {
@@ -1318,7 +1403,6 @@ function changeTheme(
           incomingX / 10
       }
     )
-
     .to(
       ".site-bg",
       {
@@ -1329,7 +1413,6 @@ function changeTheme(
         ease: "power3.out"
       }
     )
-
     .to(
       heroElements,
       {
@@ -1341,11 +1424,9 @@ function changeTheme(
       },
       0
     )
-
     .call(() => {
       renderTheme();
     })
-
     .set(
       heroElements,
       {
@@ -1353,7 +1434,6 @@ function changeTheme(
         opacity: 0
       }
     )
-
     .to(
       heroElements,
       {
@@ -1379,10 +1459,6 @@ async function setPlayState(
   nextState
 ) {
   try {
-    /*
-     * Make sure the player exists
-     * before attempting playback.
-     */
     await initYouTubePlayer();
 
     if (nextState) {
@@ -1398,15 +1474,6 @@ async function setPlayState(
 
       pauseYouTube();
     }
-
-    /*
-     * IMPORTANT:
-     *
-     * We do NOT manually set state.isPlaying here.
-     *
-     * YouTube's PLAYING / PAUSED state
-     * callback updates it.
-     */
   } catch (error) {
     console.error(
       "Unable to change YouTube play state:",
@@ -2048,9 +2115,6 @@ function toggleVolume() {
 ========================================================= */
 
 function setupPlayerEvents() {
-  /*
-   * MAIN PLAY / PAUSE BUTTON
-   */
   elements.playPause?.addEventListener(
     "click",
     async (event) => {
@@ -2063,57 +2127,36 @@ function setupPlayerEvents() {
     }
   );
 
-  /*
-   * NEXT
-   */
   elements.nextButton?.addEventListener(
     "click",
     nextTrack
   );
 
-  /*
-   * PREVIOUS
-   */
   elements.previousButton?.addEventListener(
     "click",
     previousTrack
   );
 
-  /*
-   * FORWARD 5 SECONDS
-   */
   elements.forward5?.addEventListener(
     "click",
     () => skip(5)
   );
 
-  /*
-   * BACK 5 SECONDS
-   */
   elements.back5?.addEventListener(
     "click",
     () => skip(-5)
   );
 
-  /*
-   * VOLUME
-   */
   elements.volumeButton?.addEventListener(
     "click",
     toggleVolume
   );
 
-  /*
-   * SHUFFLE
-   */
   elements.shuffleButton?.addEventListener(
     "click",
     toggleShuffle
   );
 
-  /*
-   * QUEUE
-   */
   elements.queueButton?.addEventListener(
     "click",
     (event) => {
@@ -2122,9 +2165,6 @@ function setupPlayerEvents() {
     }
   );
 
-  /*
-   * YOUTUBE MUSIC PLAYLIST
-   */
   elements.youtubePlaylist?.addEventListener(
     "click",
     () => {
@@ -2496,6 +2536,32 @@ async function loadAllPlaylists() {
           console.log(
             `🎵 ${theme.name}: ${theme.tracks.length} tracks`
           );
+
+          /*
+           * Debug artwork information.
+           */
+          if (
+            theme.tracks.length > 0
+          ) {
+            console.log(
+              "🎨 First track artwork:",
+              {
+                title:
+                  theme.tracks[0].title,
+
+                videoId:
+                  theme.tracks[0].videoId,
+
+                thumbnail:
+                  theme.tracks[0].thumbnail,
+
+                fallback:
+                  theme.tracks[0]
+                    .thumbnailFallback
+              }
+            );
+          }
+
         } catch (error) {
           console.error(
             `❌ ${theme.name} playlist failed:`,

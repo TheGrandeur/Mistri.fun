@@ -555,7 +555,7 @@ button {
   position: absolute;
   inset: 0;
 
-  z-index: -1;
+  z-index: 0;
 
   border-radius: inherit;
 
@@ -597,11 +597,11 @@ button {
 
   opacity: 0.9;
 
-  z-index: -1;
+  z-index: 0;
 }
 
 /* ==================================================
-   COVER
+   COVER — FIXED STACKING
 ================================================== */
 
 .cover {
@@ -610,8 +610,7 @@ button {
   width: 76px;
   height: 76px;
 
-  display: grid;
-  place-items: center;
+  display: block;
 
   overflow: hidden;
 
@@ -637,37 +636,71 @@ button {
 
   font-size: 20px;
   font-weight: 600;
+
+  z-index: 10;
+
+  isolation: isolate;
 }
+
+/*
+   IMPORTANT:
+
+   The artwork must ALWAYS be above the cover background
+   and below the shine.
+
+   Do NOT let #coverInitial create another stacking layer
+   above the image.
+*/
 
 .cover img {
   position: absolute;
-  inset: 0;
+
+  top: 0;
+  left: 0;
 
   width: 100%;
   height: 100%;
 
-  object-fit: cover;
-
   display: block;
+
+  object-fit: cover;
 
   border-radius: 50%;
 
-  z-index: 1;
+  opacity: 1 !important;
+  visibility: visible !important;
+
+  z-index: 20;
+
+  pointer-events: none;
+
+  background: transparent;
+
+  transform: translateZ(0);
 
   transition:
     transform 0.5s ease,
-    filter 0.4s ease;
+    filter 0.4s ease,
+    opacity 0.3s ease;
 }
 
 .cover:hover img {
-  transform: scale(1.06);
+  transform:
+    translateZ(0)
+    scale(1.06);
 }
+
+/*
+   This is ONLY the shine layer.
+   It must not hide the artwork.
+*/
 
 .cover-shine {
   position: absolute;
+
   inset: 0;
 
-  z-index: 3;
+  z-index: 30;
 
   pointer-events: none;
 
@@ -681,9 +714,62 @@ button {
     );
 }
 
+/*
+   #coverInitial is treated as a wrapper/placeholder only.
+
+   It MUST NOT paint a background over the artwork.
+*/
+
 #coverInitial {
-  position: relative;
-  z-index: 2;
+  position: absolute !important;
+
+  inset: 0 !important;
+
+  width: 100% !important;
+  height: 100% !important;
+
+  margin: 0 !important;
+  padding: 0 !important;
+
+  display: block !important;
+
+  overflow: hidden !important;
+
+  border-radius: 50% !important;
+
+  background: transparent !important;
+
+  opacity: 1 !important;
+  visibility: visible !important;
+
+  z-index: 20 !important;
+
+  pointer-events: none !important;
+}
+
+#coverInitial img {
+  position: absolute !important;
+
+  top: 0 !important;
+  left: 0 !important;
+
+  width: 100% !important;
+  height: 100% !important;
+
+  display: block !important;
+
+  object-fit: cover !important;
+
+  border-radius: 50% !important;
+
+  background: transparent !important;
+
+  opacity: 1 !important;
+  visibility: visible !important;
+
+  z-index: 21 !important;
+
+  pointer-events: none !important;
 }
 
 /* ==================================================
@@ -1464,10 +1550,9 @@ button {
   transform: translateY(-1px);
 }
 
-
-/* -----------------------------------------------
+/* ==================================================
    ROUND MUSIC ICON
------------------------------------------------ */
+================================================== */
 
 .youtube-circle {
   width: 36px;
@@ -1485,11 +1570,8 @@ button {
   color: #17110f;
 
   box-shadow:
-    0 5px 18px
-      rgba(0, 0, 0, 0.20),
-
-    inset 0 1px
-      rgba(255, 255, 255, 0.5);
+    0 5px 18px rgba(0, 0, 0, 0.20),
+    inset 0 1px rgba(255, 255, 255, 0.5);
 
   transition:
     transform 0.2s ease,
@@ -1506,19 +1588,9 @@ button {
     translateX(1px);
 }
 
-
-/* -----------------------------------------------
-   LABEL
------------------------------------------------ */
-
 .youtube-label {
   white-space: nowrap;
 }
-
-
-/* -----------------------------------------------
-   EXTERNAL LINK ARROW
------------------------------------------------ */
 
 .youtube-arrow {
   margin-left: -4px;
@@ -1535,22 +1607,14 @@ button {
     color 0.2s ease;
 }
 
-
-/* -----------------------------------------------
-   HOVER
------------------------------------------------ */
-
 .youtube-playlist:hover .youtube-circle {
   transform: scale(1.06);
 
   background: white;
 
   box-shadow:
-    0 7px 24px
-      rgba(0, 0, 0, 0.28),
-
-    0 0 18px
-      rgba(255, 255, 255, 0.12);
+    0 7px 24px rgba(0, 0, 0, 0.28),
+    0 0 18px rgba(255, 255, 255, 0.12);
 }
 
 .youtube-playlist:hover .youtube-arrow {
@@ -1558,33 +1622,6 @@ button {
 
   transform:
     translate(2px, -2px);
-}
-
-
-/* -----------------------------------------------
-   MOBILE
------------------------------------------------ */
-
-@media (max-width: 760px) {
-
-  .youtube-playlist {
-    gap: 8px;
-
-    font-size: 12px;
-  }
-
-  .youtube-circle {
-    width: 30px;
-    height: 30px;
-  }
-
-  .youtube-play {
-    font-size: 10px;
-  }
-
-  .youtube-arrow {
-    font-size: 17px;
-  }
 }
 
 /* ==================================================
@@ -1856,6 +1893,54 @@ button {
     height: 100%;
   }
 
+  /*
+     Keep the mobile artwork stacking exactly
+     the same as desktop.
+  */
+
+  #coverInitial {
+    position: absolute !important;
+
+    inset: 0 !important;
+
+    width: 100% !important;
+    height: 100% !important;
+
+    display: block !important;
+
+    overflow: hidden !important;
+
+    opacity: 1 !important;
+    visibility: visible !important;
+
+    background: transparent !important;
+
+    z-index: 20 !important;
+  }
+
+  #coverInitial img {
+    position: absolute !important;
+
+    inset: 0 !important;
+
+    width: 100% !important;
+    height: 100% !important;
+
+    display: block !important;
+
+    visibility: visible !important;
+
+    opacity: 1 !important;
+
+    object-fit: cover !important;
+
+    border-radius: 50% !important;
+
+    background: transparent !important;
+
+    z-index: 21 !important;
+  }
+
   .track-info {
     padding-right: 42px;
   }
@@ -2063,6 +2148,25 @@ button {
   .queue-footer {
     padding:
       12px 18px;
+  }
+
+  .youtube-playlist {
+    gap: 8px;
+
+    font-size: 12px;
+  }
+
+  .youtube-circle {
+    width: 30px;
+    height: 30px;
+  }
+
+  .youtube-play {
+    font-size: 10px;
+  }
+
+  .youtube-arrow {
+    font-size: 17px;
   }
 }
 

@@ -941,92 +941,168 @@ async function loadTrack(
    COVER ART
 ========================================================= */
 
-/*
- * Get the actual YouTube video ID.
- */
 function getTrackVideoId(track) {
   if (!track) {
     return null;
   }
 
-  return (
-    track.videoId ||
-    track.id ||
-    track.resourceId?.videoId ||
-    track.contentDetails?.videoId ||
-    null
-  );
+  if (
+    typeof track.videoId === "string" &&
+    track.videoId.trim()
+  ) {
+    return track.videoId.trim();
+  }
+
+  if (
+    typeof track.id === "string" &&
+    track.id.trim()
+  ) {
+    return track.id.trim();
+  }
+
+  if (
+    typeof track.id?.videoId === "string" &&
+    track.id.videoId.trim()
+  ) {
+    return track.id.videoId.trim();
+  }
+
+  if (
+    typeof track.snippet?.resourceId?.videoId ===
+      "string" &&
+    track.snippet.resourceId.videoId.trim()
+  ) {
+    return track.snippet.resourceId.videoId.trim();
+  }
+
+  if (
+    typeof track.contentDetails?.videoId ===
+      "string" &&
+    track.contentDetails.videoId.trim()
+  ) {
+    return track.contentDetails.videoId.trim();
+  }
+
+  return null;
 }
 
+/* ---------------------------------------------------------
+   GET ARTWORK
+--------------------------------------------------------- */
 
-/*
- * Get cover artwork.
- *
- * The normalized youtube.js file should
- * already provide thumbnail + thumbnailFallback.
- *
- * We still generate the YouTube URLs here
- * as an additional safety fallback.
- */
-function getTrackArtwork(track) {
+function getTrackThumbnail(track) {
   if (!track) {
-    return {
-      primary: null,
-      fallback: null
-    };
+    return null;
   }
 
   /*
-   * Use normalized thumbnail first.
+   * Prefer normalized thumbnail.
    */
-  const primary =
-    track.thumbnail ||
-    track.thumbnailUrl ||
-    track.image ||
-    track.artwork ||
-    track.thumbnails?.maxres?.url ||
-    track.thumbnails?.high?.url ||
-    track.thumbnails?.medium?.url ||
-    track.thumbnails?.default?.url ||
-    null;
+  if (
+    typeof track.thumbnail === "string" &&
+    track.thumbnail.trim()
+  ) {
+    return track.thumbnail.trim();
+  }
+
+  if (
+    typeof track.thumbnailUrl === "string" &&
+    track.thumbnailUrl.trim()
+  ) {
+    return track.thumbnailUrl.trim();
+  }
+
+  if (
+    typeof track.image === "string" &&
+    track.image.trim()
+  ) {
+    return track.image.trim();
+  }
+
+  if (
+    typeof track.artwork === "string" &&
+    track.artwork.trim()
+  ) {
+    return track.artwork.trim();
+  }
 
   /*
-   * Use normalized fallback if available.
+   * Check normal YouTube thumbnail objects.
    */
-  const fallback =
-    track.thumbnailFallback ||
-    null;
+  const thumbnails = [
+    track.thumbnails?.maxres?.url,
+    track.thumbnails?.standard?.url,
+    track.thumbnails?.high?.url,
+    track.thumbnails?.medium?.url,
+    track.thumbnails?.default?.url,
+
+    track.snippet?.thumbnails?.maxres?.url,
+    track.snippet?.thumbnails?.standard?.url,
+    track.snippet?.thumbnails?.high?.url,
+    track.snippet?.thumbnails?.medium?.url,
+    track.snippet?.thumbnails?.default?.url
+  ];
+
+  const thumbnail =
+    thumbnails.find(
+      (url) =>
+        typeof url === "string" &&
+        url.trim()
+    );
+
+  if (thumbnail) {
+    return thumbnail.trim();
+  }
 
   /*
-   * If we still don't have artwork,
-   * generate it from the video ID.
+   * FINAL FALLBACK:
+   * Build YouTube artwork ourselves.
    */
   const videoId =
     getTrackVideoId(track);
 
-  if (!primary && videoId) {
-    const encodedVideoId =
-      encodeURIComponent(videoId);
-
-    return {
-      primary:
-        `https://i.ytimg.com/vi/${encodedVideoId}/maxresdefault.jpg`,
-
-      fallback:
-        `https://i.ytimg.com/vi/${encodedVideoId}/hqdefault.jpg`
-    };
+  if (videoId) {
+    return `https://i.ytimg.com/vi/${encodeURIComponent(
+      videoId
+    )}/hqdefault.jpg`;
   }
 
-  return {
-    primary,
-    fallback
-  };
+  return null;
 }
 
+/* ---------------------------------------------------------
+   ARTWORK FALLBACKS
+--------------------------------------------------------- */
 
-/*
- * Render the circular disc artwork.
- */
+function getTrackThumbnailFallbacks(
+  track
+) {
+  const videoId =
+    getTrackVideoId(track);
+
+  if (!videoId) {
+    return [];
+  }
+
+  const encodedId =
+    encodeURIComponent(videoId);
+
+  /*
+   * Try multiple YouTube image hosts/sizes.
+   */
+  return [
+    `https://i.ytimg.com/vi/${encodedId}/maxresdefault.jpg`,
+    `https://i.ytimg.com/vi/${encodedId}/hqdefault.jpg`,
+    `https://i.ytimg.com/vi/${encodedId}/mqdefault.jpg`,
+    `https://img.youtube.com/vi/${encodedId}/hqdefault.jpg`,
+    `https://img.youtube.com/vi/${encodedId}/0.jpg`
+  ];
+}
+
+/* ---------------------------------------------------------
+   RENDER COVER ART
+--------------------------------------------------------- */
+
 function renderCoverArt(
   track,
   theme
@@ -1035,6 +1111,10 @@ function renderCoverArt(
     elements.coverInitial;
 
   if (!container) {
+    console.warn(
+      "❌ #coverInitial element was not found."
+    );
+
     return;
   }
 
@@ -1043,16 +1123,48 @@ function renderCoverArt(
    */
   container.innerHTML = "";
 
-  const artwork =
-    getTrackArtwork(track);
+  /*
+   * Get primary artwork.
+   */
+  const primaryThumbnail =
+    getTrackThumbnail(track);
+
+  /*
+   * Get fallback artwork.
+   */
+  const fallbackThumbnails =
+    getTrackThumbnailFallbacks(
+      track
+    );
+
+  const thumbnailSources = [
+    primaryThumbnail,
+    ...fallbackThumbnails
+  ].filter(
+    (url, index, array) =>
+      url &&
+      array.indexOf(url) === index
+  );
+
+  console.log(
+    "🖼️ Cover artwork:",
+    {
+      title: track?.title,
+      videoId:
+        getTrackVideoId(track),
+      sources:
+        thumbnailSources
+    }
+  );
 
   /*
    * No artwork available.
    */
-  if (!artwork.primary) {
+  if (
+    thumbnailSources.length === 0
+  ) {
     container.textContent =
-      theme?.name?.charAt(0) ||
-      "M";
+      theme.name.charAt(0);
 
     return;
   }
@@ -1073,10 +1185,8 @@ function renderCoverArt(
   image.decoding =
     "async";
 
-  /*
-   * Prevent browser dragging the artwork.
-   */
-  image.draggable = false;
+  image.draggable =
+    false;
 
   Object.assign(
     image.style,
@@ -1085,66 +1195,80 @@ function renderCoverArt(
       height: "100%",
       objectFit: "cover",
       borderRadius: "50%",
-      display: "block",
-      userSelect: "none",
-      WebkitUserDrag: "none"
+      display: "block"
     }
   );
 
-  /*
-   * Keep track of fallback state.
-   */
-  let usingFallback = false;
+  let sourceIndex = 0;
 
-  image.onerror = () => {
-    /*
-     * First failure:
-     * try fallback artwork.
-     */
+  function loadArtwork() {
     if (
-      artwork.fallback &&
-      !usingFallback
+      sourceIndex >=
+      thumbnailSources.length
     ) {
-      usingFallback = true;
-
       console.warn(
-        "Max resolution artwork unavailable. Loading fallback artwork."
+        "❌ All artwork sources failed:",
+        track
       );
 
-      image.src =
-        artwork.fallback;
+      image.remove();
+
+      container.textContent =
+        theme.name.charAt(0);
 
       return;
     }
 
-    /*
-     * Everything failed.
-     */
-    console.warn(
-      "Unable to load artwork for track:",
-      track
+    const source =
+      thumbnailSources[
+        sourceIndex
+      ];
+
+    console.log(
+      `🖼️ Loading artwork ${sourceIndex + 1}/${thumbnailSources.length}:`,
+      source
     );
 
-    image.remove();
+    image.src =
+      source;
+  }
 
-    container.textContent =
-      theme?.name?.charAt(0) ||
-      "M";
+  /*
+   * If an image fails, automatically
+   * try the next YouTube thumbnail.
+   */
+  image.onerror = () => {
+    console.warn(
+      "⚠️ Artwork failed:",
+      image.src
+    );
+
+    sourceIndex++;
+
+    loadArtwork();
   };
 
-  /*
-   * Set source only after onerror
-   * has been registered.
-   */
-  image.src =
-    artwork.primary;
+  image.onload = () => {
+    console.log(
+      "✅ Artwork loaded:",
+      image.src
+    );
 
-  /*
-   * Append to disc.
-   */
+    /*
+     * Make sure the image is actually
+     * visible.
+     */
+    image.style.opacity = "1";
+  };
+
   container.appendChild(
     image
   );
+
+  /*
+   * Start loading.
+   */
+  loadArtwork();
 }
 
 /* =========================================================

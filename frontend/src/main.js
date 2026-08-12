@@ -121,8 +121,7 @@ const DUCKED_MUSIC_VOLUME = 0.25;
 const SITE_SOUND_VOLUME = 1;
 
 const SOCKET_URL =
-  import.meta.env.VITE_SOCKET_URL ||
-  "http://localhost:3001";
+  import.meta.env.VITE_SOCKET_URL;
 
 /* =========================================================
    APPLICATION STATE
@@ -162,8 +161,11 @@ const root = document.documentElement;
 const elements = {
   bg: document.querySelector(".site-bg"),
 
-  themeNumber: document.querySelector("#themeNumber"),
-  themeLine: document.querySelector("#themeLine"),
+  themeNumber:
+    document.querySelector("#themeNumber"),
+
+  themeLine:
+    document.querySelector("#themeLine"),
 
   listenerCount:
     document.querySelector("#listenerCount"),
@@ -228,14 +230,11 @@ const elements = {
   time:
     document.querySelector("#time"),
 
-  /*
-   * NEW:
-   * Top-right button for YouTube Music playlist.
-   *
-   * No play/pause button is required anymore.
-   */
   youtubePlaylist:
-    document.querySelector("#youtubePlaylist")
+    document.querySelector("#youtubePlaylist"),
+
+  playPause:
+    document.querySelector("#playPause")
 };
 
 /* =========================================================
@@ -300,11 +299,56 @@ function escapeHtml(value) {
 }
 
 /* =========================================================
+   PLAY / PAUSE BUTTON UI
+========================================================= */
+
+function updatePlayPauseButton(
+  isPlaying
+) {
+  const button =
+    elements.playPause;
+
+  if (!button) {
+    return;
+  }
+
+  button.textContent =
+    isPlaying
+      ? "||"
+      : "▶";
+
+  button.setAttribute(
+    "aria-label",
+    isPlaying
+      ? "Pause"
+      : "Play"
+  );
+
+  button.setAttribute(
+    "title",
+    isPlaying
+      ? "Pause"
+      : "Play"
+  );
+
+  button.setAttribute(
+    "aria-pressed",
+    String(isPlaying)
+  );
+
+  button.classList.toggle(
+    "is-playing",
+    isPlaying
+  );
+}
+
+/* =========================================================
    YOUTUBE MUSIC PLAYLIST
 ========================================================= */
 
 function getYouTubeMusicPlaylistUrl() {
-  const theme = currentTheme();
+  const theme =
+    currentTheme();
 
   if (!theme?.playlistId) {
     return "https://music.youtube.com/";
@@ -326,23 +370,23 @@ function updateYouTubePlaylistButton() {
   const playlistUrl =
     getYouTubeMusicPlaylistUrl();
 
-  /*
-   * If the element is an <a>, update href.
-   */
   if (
-    button instanceof HTMLAnchorElement
+    button instanceof
+    HTMLAnchorElement
   ) {
-    button.href = playlistUrl;
-    button.target = "_blank";
-    button.rel = "noopener noreferrer";
+    button.href =
+      playlistUrl;
+
+    button.target =
+      "_blank";
+
+    button.rel =
+      "noopener noreferrer";
   }
 
-  /*
-   * If the element is a button,
-   * open the playlist manually.
-   */
   if (
-    button instanceof HTMLButtonElement
+    button instanceof
+    HTMLButtonElement
   ) {
     button.onclick = () => {
       window.open(
@@ -409,7 +453,8 @@ function fadeYouTubeVolume(
   }
 
   const volumeState = {
-    value: getEffectiveYouTubeVolume()
+    value:
+      getEffectiveYouTubeVolume()
   };
 
   state.youtubeVolumeTween =
@@ -485,7 +530,8 @@ function stopSiteSound(
       );
     }
 
-    state.activeSiteSound = null;
+    state.activeSiteSound =
+      null;
   }
 
   document
@@ -511,14 +557,6 @@ function playSiteSound(
     return;
   }
 
-  /*
-   * IMPORTANT:
-   *
-   * Stop the previous sound FIRST.
-   * Then create the new request ID.
-   *
-   * This fixes the old request-ID bug.
-   */
   stopSiteSound(false);
 
   const requestId =
@@ -693,35 +731,81 @@ function startProgressTimer() {
 function handleYouTubeState(
   playerState
 ) {
+  /*
+   * IMPORTANT:
+   * This must stay INSIDE the function.
+   */
   const YTState =
     window.YT?.PlayerState;
 
   if (!YTState) {
+    console.warn(
+      "YouTube PlayerState is not available yet."
+    );
+
     return;
   }
 
   switch (playerState) {
+    /* -----------------------------------------------------
+       PLAYING
+    ----------------------------------------------------- */
+
     case YTState.PLAYING:
       state.isPlaying = true;
 
+      updatePlayPauseButton(
+        true
+      );
+
       startProgressTimer();
+
       updateQueue();
 
       setYouTubeVolume(
         getEffectiveYouTubeVolume()
       );
 
+      if (elements.playerNote) {
+        elements.playerNote.textContent =
+          "YouTube";
+      }
+
+      console.log(
+        "▶ YouTube playback started"
+      );
+
       break;
+
+    /* -----------------------------------------------------
+       PAUSED
+    ----------------------------------------------------- */
 
     case YTState.PAUSED:
       state.isPlaying = false;
 
+      updatePlayPauseButton(
+        false
+      );
+
       stopProgressTimer();
+
+      console.log(
+        "⏸ YouTube playback paused"
+      );
 
       break;
 
+    /* -----------------------------------------------------
+       ENDED
+    ----------------------------------------------------- */
+
     case YTState.ENDED:
       state.isPlaying = false;
+
+      updatePlayPauseButton(
+        false
+      );
 
       stopProgressTimer();
 
@@ -729,7 +813,47 @@ function handleYouTubeState(
         elements.progress.value = 100;
       }
 
+      console.log(
+        "⏹ YouTube track ended"
+      );
+
       nextTrack();
+
+      break;
+
+    /* -----------------------------------------------------
+       BUFFERING
+    ----------------------------------------------------- */
+
+    case YTState.BUFFERING:
+      /*
+       * Do NOT change isPlaying here.
+       * The previous playback state remains valid.
+       */
+      if (elements.playerNote) {
+        elements.playerNote.textContent =
+          "Buffering...";
+      }
+
+      break;
+
+    /* -----------------------------------------------------
+       CUED
+    ----------------------------------------------------- */
+
+    case YTState.CUED:
+      state.isPlaying = false;
+
+      updatePlayPauseButton(
+        false
+      );
+
+      stopProgressTimer();
+
+      if (elements.playerNote) {
+        elements.playerNote.textContent =
+          "YouTube";
+      }
 
       break;
 
@@ -756,6 +880,12 @@ async function loadTrack(
   const requestId =
     state.loadRequestId;
 
+  state.isPlaying = false;
+
+  updatePlayPauseButton(
+    false
+  );
+
   if (elements.progress) {
     elements.progress.value = 0;
   }
@@ -772,6 +902,10 @@ async function loadTrack(
 
   if (!track) {
     state.isPlaying = false;
+
+    updatePlayPauseButton(
+      false
+    );
 
     if (elements.playerNote) {
       elements.playerNote.textContent =
@@ -796,21 +930,45 @@ async function loadTrack(
       return;
     }
 
+    /*
+     * Load the YouTube video.
+     *
+     * If autoPlay is true, the YouTube
+     * service will start playback.
+     */
     await loadYouTubeVideo(
       track.id,
       autoPlay
     );
 
-    /*
-     * Set volume after loading.
-     */
+    if (
+      requestId !==
+      state.loadRequestId
+    ) {
+      return;
+    }
+
     setYouTubeVolume(
       getEffectiveYouTubeVolume()
     );
+
+    /*
+     * If autoplay was requested, don't
+     * manually set state here.
+     *
+     * YouTube's PLAYING callback is the
+     * source of truth.
+     */
   } catch (error) {
     console.error(
       "YouTube player initialization failed:",
       error
+    );
+
+    state.isPlaying = false;
+
+    updatePlayPauseButton(
+      false
     );
 
     if (elements.playerNote) {
@@ -865,14 +1023,18 @@ function renderCoverArt(
   const image =
     document.createElement("img");
 
-  image.src = thumbnail;
+  image.src =
+    thumbnail;
 
   image.alt =
     track?.title ||
     "Album artwork";
 
-  image.loading = "eager";
-  image.decoding = "async";
+  image.loading =
+    "eager";
+
+  image.decoding =
+    "async";
 
   Object.assign(
     image.style,
@@ -1037,6 +1199,10 @@ function renderTheme() {
 
   updateYouTubePlaylistButton();
 
+  updatePlayPauseButton(
+    state.isPlaying
+  );
+
   if (elements.progress) {
     elements.progress.value = 0;
   }
@@ -1068,7 +1234,8 @@ function changeTheme(
     return;
   }
 
-  state.isThemeChanging = true;
+  state.isThemeChanging =
+    true;
 
   const wasPlaying =
     state.isPlaying;
@@ -1087,6 +1254,10 @@ function changeTheme(
   }
 
   state.isPlaying = false;
+
+  updatePlayPauseButton(
+    false
+  );
 
   state.themeIndex =
     (
@@ -1204,31 +1375,48 @@ function changeTheme(
    PLAY / PAUSE
 ========================================================= */
 
-/*
- * There is NO playPause/topPlay DOM button anymore.
- *
- * Playback can still be controlled through:
- * - Keyboard Space
- * - YouTube player
- * - Track loading with autoplay
- * - Other programmatic controls
- */
-
 async function setPlayState(
   nextState
 ) {
   try {
+    /*
+     * Make sure the player exists
+     * before attempting playback.
+     */
     await initYouTubePlayer();
 
     if (nextState) {
+      console.log(
+        "▶ Play button clicked"
+      );
+
       await playYouTube();
     } else {
+      console.log(
+        "⏸ Pause button clicked"
+      );
+
       pauseYouTube();
     }
+
+    /*
+     * IMPORTANT:
+     *
+     * We do NOT manually set state.isPlaying here.
+     *
+     * YouTube's PLAYING / PAUSED state
+     * callback updates it.
+     */
   } catch (error) {
     console.error(
       "Unable to change YouTube play state:",
       error
+    );
+
+    state.isPlaying = false;
+
+    updatePlayPauseButton(
+      false
     );
   }
 }
@@ -1468,13 +1656,6 @@ function shuffleCurrentThemeTracks() {
 ========================================================= */
 
 function createQueueUI() {
-  /*
-   * Your current index.html already contains
-   * the queue overlay.
-   *
-   * Only create one dynamically if it is missing.
-   */
-
   if (
     document.querySelector(
       "#queueOverlay"
@@ -1868,40 +2049,71 @@ function toggleVolume() {
 
 function setupPlayerEvents() {
   /*
-   * playPause and topPlay have intentionally
-   * been removed.
+   * MAIN PLAY / PAUSE BUTTON
    */
+  elements.playPause?.addEventListener(
+    "click",
+    async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
 
+      await setPlayState(
+        !state.isPlaying
+      );
+    }
+  );
+
+  /*
+   * NEXT
+   */
   elements.nextButton?.addEventListener(
     "click",
     nextTrack
   );
 
+  /*
+   * PREVIOUS
+   */
   elements.previousButton?.addEventListener(
     "click",
     previousTrack
   );
 
+  /*
+   * FORWARD 5 SECONDS
+   */
   elements.forward5?.addEventListener(
     "click",
     () => skip(5)
   );
 
+  /*
+   * BACK 5 SECONDS
+   */
   elements.back5?.addEventListener(
     "click",
     () => skip(-5)
   );
 
+  /*
+   * VOLUME
+   */
   elements.volumeButton?.addEventListener(
     "click",
     toggleVolume
   );
 
+  /*
+   * SHUFFLE
+   */
   elements.shuffleButton?.addEventListener(
     "click",
     toggleShuffle
   );
 
+  /*
+   * QUEUE
+   */
   elements.queueButton?.addEventListener(
     "click",
     (event) => {
@@ -1911,16 +2123,11 @@ function setupPlayerEvents() {
   );
 
   /*
-   * YouTube Music playlist button.
+   * YOUTUBE MUSIC PLAYLIST
    */
   elements.youtubePlaylist?.addEventListener(
     "click",
     () => {
-      /*
-       * For <button> this opens the playlist.
-       * For <a>, updateYouTubePlaylistButton()
-       * already handles the URL.
-       */
       if (
         elements.youtubePlaylist instanceof
         HTMLButtonElement
@@ -2116,7 +2323,8 @@ function setupSwipeNavigation() {
         return;
       }
 
-      state.isDragging = true;
+      state.isDragging =
+        true;
 
       startX =
         event.clientX;
@@ -2138,7 +2346,8 @@ function setupSwipeNavigation() {
         return;
       }
 
-      state.isDragging = false;
+      state.isDragging =
+        false;
 
       const deltaX =
         event.clientX -
@@ -2314,14 +2523,25 @@ async function loadAllPlaylists() {
 ========================================================= */
 
 function setupPresence() {
+  if (!SOCKET_URL) {
+    console.warn(
+      "VITE_SOCKET_URL is not configured."
+    );
+
+    return;
+  }
+
   try {
     state.socket =
-      io(SOCKET_URL, {
-        transports: [
-          "websocket",
-          "polling"
-        ]
-      });
+      io(
+        SOCKET_URL,
+        {
+          transports: [
+            "websocket",
+            "polling"
+          ]
+        }
+      );
 
     state.socket.on(
       "connect",
@@ -2433,26 +2653,59 @@ window.addEventListener(
 async function initialize() {
   try {
     setupPlayerEvents();
+
     setupQueueEvents();
+
     setupKeyboardControls();
+
     setupThemeNavigation();
+
     setupProgressSeek();
+
     setupSwipeNavigation();
+
     setupParallax();
+
     setupClock();
+
     setupPresence();
 
+    /*
+     * Register YouTube state listener
+     * BEFORE loading the player.
+     */
     onYouTubeStateChange(
       handleYouTubeState
     );
 
+    /*
+     * Load all playlist tracks first.
+     */
     await loadAllPlaylists();
 
+    /*
+     * Render the first theme and queue.
+     */
     renderTheme();
 
+    /*
+     * Initialize YouTube player.
+     */
     await initYouTubePlayer();
 
+    /*
+     * Load first track without autoplay.
+     */
     await loadTrack(false);
+
+    /*
+     * Make sure button starts in Play state.
+     */
+    state.isPlaying = false;
+
+    updatePlayPauseButton(
+      false
+    );
 
     console.log(
       "🚧 Mistri initialized successfully."
@@ -2461,6 +2714,12 @@ async function initialize() {
     console.error(
       "❌ Mistri initialization failed:",
       error
+    );
+
+    state.isPlaying = false;
+
+    updatePlayPauseButton(
+      false
     );
 
     if (elements.playerNote) {
